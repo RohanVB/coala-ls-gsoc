@@ -74,11 +74,9 @@ class coalaWrapper:
 
         if tags is not None:
             if type(tags) not in (list, tuple):
-                tags = (tags,)
+                tags = [tags,]
 
-            arg_list += ['--filter-by',
-                         'section_tags',
-                         *tags, ]
+            arg_list += ['--filter-by', 'section_tags'] + list(tags)
 
         if cache_map is not None:
             cache = cache_map
