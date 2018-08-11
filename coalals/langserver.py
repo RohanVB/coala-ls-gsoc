@@ -6,7 +6,9 @@ from jsonrpc.streams import JsonRpcStreamWriter, JsonRpcStreamReader
 from .results.diagnostics import Diagnostics
 from .results.fixes import coalaPatch, TextEdits
 from .interface import coalaWrapper
-from .utils.files import UriUtils, FileProxy, FileProxyMap
+from .utils.files import UriUtils
+from .utils.cache import coalaLsProxyMapFileCache
+from coalib.io.FileProxy import FileProxy, FileProxyMap
 
 import logging
 logger = logging.getLogger(__name__)
@@ -66,7 +68,8 @@ class LangServer(MethodDispatcher):
         # max_jobs is strict and a new job can only be submitted by pre-empting
         # an older job or submitting later. No queuing is supported.
         self._coala = coalaWrapper(max_jobs=self._config_max_jobs,
-                                   max_workers=self._config_max_workers)
+                                   max_workers=self._config_max_workers,
+                                   fileproxy_map=self._proxy_map)
 
         self._capabilities = {
             'capabilities': {

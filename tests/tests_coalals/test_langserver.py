@@ -4,7 +4,8 @@ from jsonrpc.streams import JsonRpcStreamReader
 from tempfile import TemporaryFile, NamedTemporaryFile
 
 from coalals.langserver import LangServer
-from coalals.utils.files import FileProxy, UriUtils
+from coalals.utils.files import UriUtils
+from coalib.io.FileProxy import FileProxy
 from helpers.utils import get_random_path
 from helpers.resources import url, sample_code_files
 from helpers.dummies import (DummyDiagnostics, DummyProcessPoolExecutor,
@@ -384,7 +385,7 @@ def test_langserver_did_save(file_langserver, verify_publish_respone):
 
     code_sample_path = url('failure.py', True)
     code_sample_name = str(code_sample_path)
-    proxy = FileProxy(code_sample_name)
+    proxy = FileProxy.from_file(code_sample_name, None)
     langserver._proxy_map.add(proxy)
 
     request = {

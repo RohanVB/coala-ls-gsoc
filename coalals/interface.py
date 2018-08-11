@@ -6,6 +6,7 @@ from coalib import coala_main
 from coalib.output.JSONEncoder import create_json_encoder
 from .concurrency import TrackedProcessPool
 from .utils.log import configure_logger, reset_logger
+from .utils.cache import coalaLsProxyMapFileCache
 
 import logging
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ class coalaWrapper:
     to perform the actual analysis.
     """
 
-    def __init__(self, max_jobs=1, max_workers=1):
+    def __init__(self, max_jobs=1, max_workers=1, fileproxy_map=None):
         """
         coalaWrapper uses a tracked process pool to run
         concurrent cycles of code analysis.
@@ -26,13 +27,19 @@ class coalaWrapper:
             The maximum number of concurrent jobs to permit.
         :param max_workers:
             The number of threads to maintain in process pool.
+        :param fileproxy_map:
+            The FileProxyMap to use while building a Cache Map.
         """
+        self._fileproxy_map = fileproxy_map
         self._tracked_pool = TrackedProcessPool(
             max_jobs=max_jobs, max_workers=max_workers)
 
     @staticmethod
-    def _run_coala(arg_list=None):
-        results, retval, _ = coala_main.run_coala(arg_list=arg_list)
+    def _run_coala(arg_list=None, cache=None):
+        results, retval, _ = coala_main.run_coala(
+                                arg_list=arg_list,
+                                cache=cache)
+
         return results, retval
 
     @staticmethod
@@ -49,7 +56,7 @@ class coalaWrapper:
                      separators=(',', ': '))
 
     @staticmethod
-    def analyse_file(file_proxy, tags=None):
+    def analyse_file(file_proxy, cache_map=None, tags=None):
         """
         Invoke and performs the actual coala analysis.
 
@@ -59,6 +66,7 @@ class coalaWrapper:
         :return:
             A valid json string containing results.
         """
+        cache = None
         arg_list = ['--json',
                     '--find-config',
                     '--limit-files',
@@ -70,12 +78,16 @@ class coalaWrapper:
 
             arg_list += ['--filter-by', 'section_tags'] + list(tags)
 
+        if cache_map is not None:
+            cache = cache_map
+            arg_list += ['--flush-cache']
+
         workspace = file_proxy.workspace
         if workspace is None:
             workspace = '.'
         chdir(workspace)
 
-        results, retval = coalaWrapper._run_coala(arg_list)
+        results, retval = coalaWrapper._run_coala(arg_list, cache)
         return coalaWrapper._process_coala_op(results, retval)
 
     def p_analyse_file(self, file_proxy, force=False, tags=None, **kargs):
@@ -91,8 +103,15 @@ class coalaWrapper:
             The force flag to use while preparing a slot using
             JobTracker.
         """
+        cache_map = None
+        if self._fileproxy_map is not None:
+            # Enable flushing of cache
+            cache_map = coalaLsProxyMapFileCache(
+                None, file_proxy.workspace or '.', flush_cache=True)
+            cache_map.set_proxymap(self._fileproxy_map)
+
         result = self._tracked_pool.exec_func(
-            coalaWrapper.analyse_file, (file_proxy, tags),
+            coalaWrapper.analyse_file, (file_proxy, cache_map, tags),
             kargs, force=force)
 
         if result is False:
