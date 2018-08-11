@@ -138,8 +138,13 @@ class LangServer(MethodDispatcher):
                              future.exception())
                 return
 
-            coala_json = future.result()
+            coala_json, retval = future.result()
             diagnostics = Diagnostics.from_coala_json(coala_json)
+
+            # Show UI to User.
+            if retval not in (0, 1):
+                self.send_show_message_req(
+                    4, coalaWrapper.retval_to_message(retval), ('ok',))
 
             self.send_diagnostics(filename, diagnostics)
 
@@ -271,7 +276,7 @@ class LangServer(MethodDispatcher):
                 return
 
             # wait for returns
-            coala_json = result.result()
+            coala_json, _ = result.result()
             fixes = Diagnostics.from_coala_json(coala_json)
 
             # send diagnostic warnings found during analysis

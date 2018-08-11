@@ -88,7 +88,7 @@ class coalaWrapper:
         chdir(workspace)
 
         results, retval = coalaWrapper._run_coala(arg_list, cache)
-        return coalaWrapper._process_coala_op(results, retval)
+        return coalaWrapper._process_coala_op(results, retval), retval
 
     def p_analyse_file(self, file_proxy, force=False, tags=None, **kargs):
         """
@@ -124,3 +124,25 @@ class coalaWrapper:
         Perform resource clean up.
         """
         self._tracked_pool.shutdown(True)
+
+    @staticmethod
+    def retval_to_message(retval):
+        """
+        Returns a presentable UI message from corresponding
+        return value of coala.
+
+        :param retval:
+            Integer value to find a corresponding message.
+        :return:
+            Message as a String describing a given return value.
+        """
+        if retval == 0:
+            return 'No issue found on analysis.'
+        elif retval == 1:
+            return 'Some issues found on analysis.'
+        elif retval == 2:
+            return ('Empty configuration, Please enable some sections '
+                    'for analysis using open, save, change section tags.')
+        else:
+            return ('Unknown issue occurred while performing coala '
+                    'analysis on file. Please report this behavior.')

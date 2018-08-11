@@ -236,6 +236,26 @@ def test_did_change_proxy_replace_new_file(file_langserver):
     assert_missing(langserver, str(random_path))
 
 
+def test_local_p_analyse_file_retval_message(file_langserver, verify_response):
+    file, langserver = file_langserver
+    filename = url('failure2.py', True)
+
+    proxy = FileProxy(str(filename))
+    langserver._proxy_map.add(proxy)
+
+    result = langserver.local_p_analyse_file(
+        proxy, tags='randomelongtag')
+
+    def consumer(file, respone, passed):
+        assert respone['method'] == 'window/showMessageRequest'
+        assert respone['params']['type'] == 4
+
+        file.close()
+        passed[0] = True
+
+    verify_response(file, langserver, consumer)
+
+
 def test_did_change_proxy_replace_open_file(file_langserver):
     file, langserver = file_langserver
 
