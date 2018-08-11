@@ -1,4 +1,4 @@
 git+https://github.com/coala/coala#egg=coala
-git+https://github.com/coala-bears/coala#egg=coala-bears
+git+https://github.com/coala/coala-bears#egg=coala-bears
 python-jsonrpc-server>=0.0.1
 whatthepatch>=0.0.5
