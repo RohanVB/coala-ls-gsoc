@@ -25,7 +25,7 @@ def coala(monkeypatch):
         with monkeypatch.context() as patch:
             if patch_run_coala:
                 def _patch(*args):
-                    return (StringIO(), patched_ret_val)
+                    return ({}, patched_ret_val)
 
                 monkeypatch.setattr('test_interface.coalaWrapper._run_coala',
                                     _patch)
@@ -39,7 +39,7 @@ def coala(monkeypatch):
 
 def get_gen_diag_count(result):
     if hasattr(result, 'result'):
-        result = result.result()
+        result, _ = result.result()
 
     gen_diagnostics = loads(result)['results']
     return count_diagnostics(gen_diagnostics)
@@ -52,7 +52,7 @@ def test_coalawrapper_analyse_file(coala, sample_proxymap):
     proxy = sample_proxymap.resolve(filename)
     proxy.workspace = None
 
-    gen_diagnostics = coala.analyse_file(proxy)
+    gen_diagnostics, _ = coala.analyse_file(proxy)
     gen_diag_count = get_gen_diag_count(gen_diagnostics)
 
     sample_code = sample_code_files[filename]
@@ -67,7 +67,7 @@ def test_coalawrapper_analyse_missing_file(coala):
     random_path = get_random_path('1')
     proxy = DummyFileProxy(random_path)
 
-    gen_diagnostics = coala.analyse_file(proxy)
+    gen_diagnostics, _ = coala.analyse_file(proxy)
     gen_diag_count = get_gen_diag_count(gen_diagnostics)
 
     assert gen_diag_count == 0
@@ -137,3 +137,36 @@ def test_coalawrapper_close(coala):
 
     # mocked shutdown property
     assert coala._tracked_pool._process_pool._closed
+
+
+def test_coalaWrapper_tags_list(coala):
+    coala = coala(True, 0)
+
+    random_path = get_random_path('4')
+    proxy = DummyFileProxy(random_path)
+
+    result = coala.p_analyse_file(proxy, tags=('save', 'change'))
+    assert isinstance(result, DummyFuture)
+    gen_diag_count = get_gen_diag_count(result)
+
+    assert gen_diag_count == 0
+
+
+def test_retval_to_message():
+    msg = coalaWrapper.retval_to_message(0)
+    assert 'No issue found' in msg
+
+    msg = coalaWrapper.retval_to_message(1)
+    assert 'Some issues found' in msg
+
+    msg = coalaWrapper.retval_to_message(2)
+    assert 'Empty configuration' in msg
+
+    msg = coalaWrapper.retval_to_message(5)
+    assert 'Unknown issue' in msg
+
+    msg = coalaWrapper.retval_to_message(6)
+    assert 'Unknown issue' in msg
+
+    msg = coalaWrapper.retval_to_message(-1)
+    assert 'Unknown issue' in msg

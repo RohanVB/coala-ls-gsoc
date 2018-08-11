@@ -1,3 +1,4 @@
+import os
 import sys
 
 from jsonrpc.endpoint import Endpoint
@@ -6,7 +7,9 @@ from jsonrpc.streams import JsonRpcStreamWriter, JsonRpcStreamReader
 from .results.diagnostics import Diagnostics
 from .results.fixes import coalaPatch, TextEdits
 from .interface import coalaWrapper
-from .utils.files import UriUtils, FileProxy, FileProxyMap
+from .utils.files import UriUtils
+from .utils.cache import coalaLsProxyMapFileCache
+from coalib.io.FileProxy import FileProxy, FileProxyMap
 
 import logging
 logger = logging.getLogger(__name__)
@@ -66,7 +69,8 @@ class LangServer(MethodDispatcher):
         # max_jobs is strict and a new job can only be submitted by pre-empting
         # an older job or submitting later. No queuing is supported.
         self._coala = coalaWrapper(max_jobs=self._config_max_jobs,
-                                   max_workers=self._config_max_workers)
+                                   max_workers=self._config_max_workers,
+                                   fileproxy_map=self._proxy_map)
 
         self._capabilities = {
             'capabilities': {
@@ -101,7 +105,7 @@ class LangServer(MethodDispatcher):
 
         return self._capabilities
 
-    def local_p_analyse_file(self, fileproxy, force=False):
+    def local_p_analyse_file(self, fileproxy, tags=None, force=False):
         """
         Schedule concurrent analysis cycle and handles
         the resolved future. The diagnostics are published
@@ -115,7 +119,9 @@ class LangServer(MethodDispatcher):
         filename = fileproxy.filename
         logger.info('Running analysis on %s', filename)
 
-        result = self._coala.p_analyse_file(fileproxy, force=force)
+        result = self._coala.p_analyse_file(
+            fileproxy, tags=tags, force=force)
+
         if result is False:
             logging.info('Failed analysis on %s', fileproxy.filename)
             return
@@ -133,8 +139,13 @@ class LangServer(MethodDispatcher):
                              future.exception())
                 return
 
-            coala_json = future.result()
+            coala_json, retval = future.result()
             diagnostics = Diagnostics.from_coala_json(coala_json)
+
+            # Show UI to User.
+            if retval not in (0, 1):
+                self.send_show_message_req(
+                    4, coalaWrapper.retval_to_message(retval), ('ok',))
 
             self.send_diagnostics(filename, diagnostics)
 
@@ -171,7 +182,7 @@ class LangServer(MethodDispatcher):
         proxy.replace(contents, version)
         self._proxy_map.add(proxy, replace=True)
 
-        self.local_p_analyse_file(proxy, True)
+        self.local_p_analyse_file(proxy, 'open', True)
 
     def m_text_document__did_save(self, **params):
         """
@@ -194,8 +205,7 @@ class LangServer(MethodDispatcher):
         if proxy is None:
             return
 
-        text_document = params['textDocument']
-        self.local_p_analyse_file(proxy, True)
+        self.local_p_analyse_file(proxy, 'save', True)
 
     def m_text_document__did_change(self, **params):
         """
@@ -235,6 +245,9 @@ class LangServer(MethodDispatcher):
         # handling mechanism should be handled in FileProxy's
         # update method
 
+        # add debouncing to keep it more responsive
+        self.local_p_analyse_file(proxy, 'change', True)
+
     def m_text_document__formatting(self, **params):
         """
         textDocument/formatting is a request. A formatting
@@ -263,7 +276,7 @@ class LangServer(MethodDispatcher):
                 return
 
             # wait for returns
-            coala_json = result.result()
+            coala_json, _ = result.result()
             fixes = Diagnostics.from_coala_json(coala_json)
 
             # send diagnostic warnings found during analysis
