@@ -101,7 +101,7 @@ class LangServer(MethodDispatcher):
 
         return self._capabilities
 
-    def local_p_analyse_file(self, fileproxy, force=False):
+    def local_p_analyse_file(self, fileproxy, tags=None, force=False):
         """
         Schedule concurrent analysis cycle and handles
         the resolved future. The diagnostics are published
@@ -115,7 +115,9 @@ class LangServer(MethodDispatcher):
         filename = fileproxy.filename
         logger.info('Running analysis on %s', filename)
 
-        result = self._coala.p_analyse_file(fileproxy, force=force)
+        result = self._coala.p_analyse_file(
+            fileproxy, tags=tags, force=force)
+
         if result is False:
             logging.info('Failed analysis on %s', fileproxy.filename)
             return
@@ -171,7 +173,7 @@ class LangServer(MethodDispatcher):
         proxy.replace(contents, version)
         self._proxy_map.add(proxy, replace=True)
 
-        self.local_p_analyse_file(proxy, True)
+        self.local_p_analyse_file(proxy, 'open', True)
 
     def m_text_document__did_save(self, **params):
         """
@@ -194,8 +196,7 @@ class LangServer(MethodDispatcher):
         if proxy is None:
             return
 
-        text_document = params['textDocument']
-        self.local_p_analyse_file(proxy, True)
+        self.local_p_analyse_file(proxy, 'save', True)
 
     def m_text_document__did_change(self, **params):
         """
@@ -235,6 +236,9 @@ class LangServer(MethodDispatcher):
         # handling mechanism should be handled in FileProxy's
         # update method
 
+        # add debouncing to keep it more responsive
+        self.local_p_analyse_file(proxy, 'change', True)
+
     def m_text_document__formatting(self, **params):
         """
         textDocument/formatting is a request. A formatting
@@ -257,7 +261,8 @@ class LangServer(MethodDispatcher):
             return
 
         def _internal_formatter():
-            result = self._coala.p_analyse_file(proxy, force=False)
+            result = self._coala.p_analyse_file(
+                proxy, tags='formatting', force=False)
             if result is False:  # pragma: no cover
                 logging.info('Failed analysis on %s', proxy.filename)
                 return

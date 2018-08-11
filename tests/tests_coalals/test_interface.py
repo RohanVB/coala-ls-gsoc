@@ -25,7 +25,7 @@ def coala(monkeypatch):
         with monkeypatch.context() as patch:
             if patch_run_coala:
                 def _patch(*args):
-                    return (StringIO(), patched_ret_val)
+                    return ({}, patched_ret_val)
 
                 monkeypatch.setattr('test_interface.coalaWrapper._run_coala',
                                     _patch)
@@ -137,3 +137,16 @@ def test_coalawrapper_close(coala):
 
     # mocked shutdown property
     assert coala._tracked_pool._process_pool._closed
+
+
+def test_coalaWrapper_tags_list(coala):
+    coala = coala(True, 0)
+
+    random_path = get_random_path('4')
+    proxy = DummyFileProxy(random_path)
+
+    result = coala.p_analyse_file(proxy, tags=('save', 'change'))
+    assert isinstance(result, DummyFuture)
+    gen_diag_count = get_gen_diag_count(result)
+
+    assert gen_diag_count == 0

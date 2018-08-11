@@ -1,10 +1,9 @@
 import sys
 from os import chdir
 from json import dumps
-from io import StringIO
-from contextlib import redirect_stdout
 
-from coalib import coala
+from coalib import coala_main
+from coalib.output.JSONEncoder import create_json_encoder
 from .concurrency import TrackedProcessPool
 from .utils.log import configure_logger, reset_logger
 
@@ -32,29 +31,25 @@ class coalaWrapper:
             max_jobs=max_jobs, max_workers=max_workers)
 
     @staticmethod
-    def _run_coala():
-        stream = StringIO()
-        with redirect_stdout(stream):
-            return (stream, coala.main())
+    def _run_coala(arg_list=None):
+        results, retval, _ = coala_main.run_coala(arg_list=arg_list)
+        return results, retval
 
     @staticmethod
-    def _get_op_from_coala(stream, retval):
-        output = None
-        if retval == 1:
-            output = stream.getvalue()
-            if output:
-                logger.debug('Output: %s', output)
-            else:
-                logger.debug('No results for the file')
-        elif retval == 0:
-            logger.debug('No issues found')
-        else:
-            logger.debug('Exited with: %s', retval)
+    def _process_coala_op(results, retval):
+        logger.debug('Return value {}'.format(retval))
 
-        return output or dumps({'results': {}})
+        encoder = create_json_encoder()
+        results = {'results': results, }
+
+        return dumps(results,
+                     cls=encoder,
+                     sort_keys=True,
+                     indent=2,
+                     separators=(',', ': '))
 
     @staticmethod
-    def analyse_file(file_proxy):
+    def analyse_file(file_proxy, tags=None):
         """
         Invoke and performs the actual coala analysis.
 
@@ -64,18 +59,26 @@ class coalaWrapper:
         :return:
             A valid json string containing results.
         """
-        sys.argv = ['', '--json', '--find-config',
-                    '--limit-files', file_proxy.filename]
+        arg_list = ['--json',
+                    '--find-config',
+                    '--limit-files',
+                    file_proxy.filename, ]
+
+        if tags is not None:
+            if type(tags) not in (list, tuple):
+                tags = [tags, ]
+
+            arg_list += ['--filter-by', 'section_tags'] + list(tags)
 
         workspace = file_proxy.workspace
         if workspace is None:
             workspace = '.'
         chdir(workspace)
 
-        stream, retval = coalaWrapper._run_coala()
-        return coalaWrapper._get_op_from_coala(stream, retval)
+        results, retval = coalaWrapper._run_coala(arg_list)
+        return coalaWrapper._process_coala_op(results, retval)
 
-    def p_analyse_file(self, file_proxy, force=False, **kargs):
+    def p_analyse_file(self, file_proxy, force=False, tags=None, **kargs):
         """
         It is a concurrent version of coalaWrapper.analyse_file().
         force indicates whether the request should pre-empt running
@@ -89,7 +92,8 @@ class coalaWrapper:
             JobTracker.
         """
         result = self._tracked_pool.exec_func(
-            coalaWrapper.analyse_file, (file_proxy,), kargs, force=force)
+            coalaWrapper.analyse_file, (file_proxy, tags),
+            kargs, force=force)
 
         if result is False:
             logging.debug('Failed p_analysis_file() on %s', file_proxy)
