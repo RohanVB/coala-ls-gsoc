@@ -3,8 +3,7 @@
     {
       "coala": {
         "results": {
-          "all": [],
-          "all.autopep8": [
+          "autopep8": [
             {
               "additional_info": "",
               "affected_code": [
@@ -22,6 +21,7 @@
                   }
                 }
               ],
+              "applied_actions": {},
               "aspect": "NoneType",
               "confidence": 100,
               "debug_msg": "",
@@ -32,40 +32,13 @@
               "message_base": "E128 continuation line under-indented for visual indent",
               "origin": "PycodestyleBear (E128)",
               "severity": 1
-            },
-            {
-              "additional_info": "",
-              "affected_code": [
-                {
-                  "end": {
-                    "column": 1,
-                    "file": "/home/ksdme/Work/gsoc/coala-ls/tests/resources/failure2.py",
-                    "line": 3
-                  },
-                  "file": "/home/ksdme/Work/gsoc/coala-ls/tests/resources/failure2.py",
-                  "start": {
-                    "column": 1,
-                    "file": "/home/ksdme/Work/gsoc/coala-ls/tests/resources/failure2.py",
-                    "line": 3
-                  }
-                }
-              ],
-              "aspect": "NoneType",
-              "confidence": 100,
-              "debug_msg": "",
-              "diffs": null,
-              "id": 86549142496323668488131828852516756744,
-              "message": "E901 TokenError: EOF in multi-line statement",
-              "message_arguments": {},
-              "message_base": "E901 TokenError: EOF in multi-line statement",
-              "origin": "PycodestyleBear (E901)",
-              "severity": 1
             }
           ],
-          "all.linelength": [],
-          "all.python": [],
-          "all.yml": [],
-          "cli": []
+          "cli": [],
+          "commit": [],
+          "linelength": [],
+          "python": [],
+          "yml": []
         }
       },
       "langserver": [
@@ -82,22 +55,7 @@
             }
           },
           "source": "coala",
-          "message": "[all.autopep8] PycodestyleBear (E128): E128 continuation line under-indented for visual indent"
-        },
-        {
-          "severity": 2,
-          "range": {
-            "start": {
-              "line": 2,
-              "character": 0
-            },
-            "end": {
-              "line": 2,
-              "character": 0
-            }
-          },
-          "source": "coala",
-          "message": "[all.autopep8] PycodestyleBear (E901): E901 TokenError: EOF in multi-line statement"
+          "message": "[autopep8] PycodestyleBear (E128): E128 continuation line under-indented for visual indent"
         }
       ]
     },
