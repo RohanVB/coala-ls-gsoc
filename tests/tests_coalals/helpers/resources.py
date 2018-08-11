@@ -19,7 +19,7 @@ sample_code_files = {
     },
 
     url('failure2.py'): {
-        'diagnostics': 2,
+        'diagnostics': 1,
     },
 }
 
