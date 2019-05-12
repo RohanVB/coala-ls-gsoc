@@ -3,10 +3,10 @@ import argparse
 import socketserver
 import traceback
 
-from pyls.jsonrpc.endpoint import Endpoint
-from pyls.jsonrpc.dispatchers import MethodDispatcher
-from pyls.jsonrpc.streams import JsonRpcStreamReader
-from pyls.jsonrpc.streams import JsonRpcStreamWriter
+from pyls_jsonrpc.endpoint import Endpoint
+from pyls_jsonrpc.dispatchers import MethodDispatcher
+from pyls_jsonrpc.streams import JsonRpcStreamReader
+from pyls_jsonrpc.streams import JsonRpcStreamWriter
 from coala_utils.decorators import enforce_signature
 from .log import log
 from .coalashim import run_coala_with_specific_file
